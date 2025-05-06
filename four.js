@@ -271,26 +271,33 @@ async function main() {
         await fs.writeFile('./success_addresses.txt', '地址,Token,使用的代币地址\n');
         
         for (let i = 0; i < evmAddressesAndKeys.secks.length; i++) {
-            const privateKey = evmAddressesAndKeys.secks[i];
-            const address = evmAddressesAndKeys.addrs[i];
-            
-            // 随机选择一个token地址
-            const tokenAddress = getRandomToken();
-            console.log(`\n执行第 ${i + 1}/${evmAddressesAndKeys.secks.length} 个账号: ${address}`);
-            console.log(`使用代币地址: ${tokenAddress}`);
-            
-            const token = await doLogin(privateKey);
-            console.log("token=>", token);
-            await sleep(3000);
-            const success = await executeTask(privateKey, tokenAddress, valueIn);
-            
-            if (success) {
-                // 记录成功的地址，包含使用的代币地址
-                await writeSuccessAddress(address, token, tokenAddress);
-                console.log(`账号 ${address} 执行成功，已记录到文件`);
-            } else {
-                console.log(`账号 ${address} 执行失败，等待10秒后继续下一个账号...`);
+            try {
+                const privateKey = evmAddressesAndKeys.secks[i];
+                const address = evmAddressesAndKeys.addrs[i];
+                
+                // 随机选择一个token地址
+                const tokenAddress = getRandomToken();
+                console.log(`\n执行第 ${i + 1}/${evmAddressesAndKeys.secks.length} 个账号: ${address}`);
+                console.log(`使用代币地址: ${tokenAddress}`);
+                
+                const token = await doLogin(privateKey);
+                console.log("token=>", token);
+                await sleep(3000);
+                const success = await executeTask(privateKey, tokenAddress, valueIn);
+                
+                if (success) {
+                    // 记录成功的地址，包含使用的代币地址
+                    await writeSuccessAddress(address, token, tokenAddress);
+                    console.log(`账号 ${address} 执行成功，已记录到文件`);
+                } else {
+                    console.log(`账号 ${address} 执行失败，等待10秒后继续下一个账号...`);
+                    await sleep(10000);
+                }
+            } catch (taskError) {
+                console.error(`账号 ${evmAddressesAndKeys.addrs[i]} 执行出错:`, taskError);
+                console.log('等待10秒后继续下一个账号...');
                 await sleep(10000);
+                continue; // 继续执行下一个账号
             }
         }
         
