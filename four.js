@@ -3,6 +3,7 @@ import {ethers} from 'ethers';
 import axios from 'axios';
 import {fourAbi,erc20ABI} from './abi.js';
 import {batchAnalyzeTxActionBalanceChangeWithEvent, rawTxToTx} from './simBundle.js';
+import { doLogin } from './login.js';
 // 初始化 provider
 const provider = new ethers.JsonRpcProvider('https://bsc-dataseed.binance.org/');
 
@@ -234,8 +235,14 @@ async function executeTask(privateKey, tokenAddress, valueIn) {
 
 // 修改main函数来测试
 async function main() {
+
+
+    
     try {
         const evmAddressesAndKeys = readEvmAddressesAndKeys('./addrs.txt');
+        // const token = await doLogin(evmAddressesAndKeys.secks[0])
+        // console.log("token=>",token);
+        // return
         const tokenAddress = "0x4db02daf49115fe8c2d945e00c28ff371c6b99f3"; // 代币地址
         const valueIn = 0.01; // 输入金额
 
@@ -246,12 +253,14 @@ async function main() {
             const address = evmAddressesAndKeys.addrs[i];
             
             console.log(`\n执行第 ${i + 1}/${evmAddressesAndKeys.secks.length} 个账号: ${address}`);
-            
+            const token = await doLogin(privateKey)
+            console.log("token=>",token);
+            await sleep(3000);
             const success = await executeTask(privateKey, tokenAddress, valueIn);
             
             if (!success) {
-                console.log(`账号 ${address} 执行失败，等待 4 秒后继续下一个账号...`);
-                await sleep(4000);
+                console.log(`账号 ${address} 执行失败，等待10 秒后继续下一个账号...`);
+                await sleep(10000);
             }
         }
         
