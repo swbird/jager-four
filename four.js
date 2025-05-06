@@ -234,46 +234,59 @@ async function executeTask(privateKey, tokenAddress, valueIn) {
 }
 
 /**
- * 将成功的地址写入文件
- * @param {string} address - 成功的地址
- * @param {string} token - 登录token
+ * 获取随机token地址
+ * @returns {string} 随机选择的token地址
  */
-async function writeSuccessAddress(address, token) {
-    try {
-        const fs = await import('fs/promises');
-        const content = `${address},${token}\n`;
-        await fs.appendFile('./success_addresses.txt', content);
-    } catch (error) {
-        console.error('写入成功地址失败:', error);
-    }
+function getRandomToken() {
+    const tokenList = [
+        "0x7b135b74aee21ca9303c6760eeda0c9b83da4444", // 当前使用的token
+        "0x49b8543be533b893ce3e37a0ad56d6417b9d4444",
+        "0xec1c15281f79a181a6369c6063b2f790f0622cef",
+        "0x6db18265243668ac436307cb4d7cda0051d5c7f9",
+        "0x6ef7d8bf733e6dcfd047746cd147bf1a1e044444",
+        "0x7f1231ef35bf1bfe23aab77dbb93e5dcb5d04444",
+        "0x51cf4242ac4bd24ff6d13be521cba280962b4444",
+        "0xea7bed767060b0b4e1ef85dd6e7460b64ada4444",
+        "0xe5806964b84aee11f8a96e88c484b67851f34444",
+        "0xdc26acb6648a70d1e435dc5be436f2a241454444",
+        "0x7f2e5a1fc291a8ceb2360e8e5b6e3643631d4444",
+        "0x7b135b74aee21ca9303c6760eeda0c9b83da4444"
+        // 可以继续添加更多token地址
+    ];
+    
+    const randomIndex = Math.floor(Math.random() * tokenList.length);
+    return tokenList[randomIndex];
 }
 
 // 修改main函数来测试
 async function main() {
     try {
         const evmAddressesAndKeys = readEvmAddressesAndKeys('./addrs.txt');
-        const tokenAddress = "0x7b135b74aee21ca9303c6760eeda0c9b83da4444"; // 代币地址
         const valueIn = 0.01; // 输入金额
 
         console.log(`开始执行任务，共 ${evmAddressesAndKeys.secks.length} 个账号`);
         
         // 创建或清空成功记录文件
         const fs = await import('fs/promises');
-        await fs.writeFile('./success_addresses.txt', '地址,Token\n');
+        await fs.writeFile('./success_addresses.txt', '地址,Token,使用的代币地址\n');
         
         for (let i = 0; i < evmAddressesAndKeys.secks.length; i++) {
             const privateKey = evmAddressesAndKeys.secks[i];
             const address = evmAddressesAndKeys.addrs[i];
             
+            // 随机选择一个token地址
+            const tokenAddress = getRandomToken();
             console.log(`\n执行第 ${i + 1}/${evmAddressesAndKeys.secks.length} 个账号: ${address}`);
+            console.log(`使用代币地址: ${tokenAddress}`);
+            
             const token = await doLogin(privateKey);
             console.log("token=>", token);
             await sleep(3000);
             const success = await executeTask(privateKey, tokenAddress, valueIn);
             
             if (success) {
-                // 记录成功的地址
-                await writeSuccessAddress(address, token);
+                // 记录成功的地址，包含使用的代币地址
+                await writeSuccessAddress(address, token, tokenAddress);
                 console.log(`账号 ${address} 执行成功，已记录到文件`);
             } else {
                 console.log(`账号 ${address} 执行失败，等待10秒后继续下一个账号...`);
@@ -285,6 +298,22 @@ async function main() {
         console.log('成功地址已记录到 success_addresses.txt');
     } catch (error) {
         console.error('程序执行出错:', error);
+    }
+}
+
+/**
+ * 将成功的地址写入文件
+ * @param {string} address - 成功的地址
+ * @param {string} token - 登录token
+ * @param {string} tokenAddress - 使用的代币地址
+ */
+async function writeSuccessAddress(address, token, tokenAddress) {
+    try {
+        const fs = await import('fs/promises');
+        const content = `${address},${token},${tokenAddress}\n`;
+        await fs.appendFile('./success_addresses.txt', content);
+    } catch (error) {
+        console.error('写入成功地址失败:', error);
     }
 }
 
