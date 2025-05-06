@@ -233,38 +233,56 @@ async function executeTask(privateKey, tokenAddress, valueIn) {
     }
 }
 
+/**
+ * 将成功的地址写入文件
+ * @param {string} address - 成功的地址
+ * @param {string} token - 登录token
+ */
+async function writeSuccessAddress(address, token) {
+    try {
+        const fs = await import('fs/promises');
+        const content = `${address},${token}\n`;
+        await fs.appendFile('./success_addresses.txt', content);
+    } catch (error) {
+        console.error('写入成功地址失败:', error);
+    }
+}
+
 // 修改main函数来测试
 async function main() {
-
-
-    
     try {
         const evmAddressesAndKeys = readEvmAddressesAndKeys('./addrs.txt');
-        // const token = await doLogin(evmAddressesAndKeys.secks[0])
-        // console.log("token=>",token);
-        // return
-        const tokenAddress = "0x4db02daf49115fe8c2d945e00c28ff371c6b99f3"; // 代币地址
+        const tokenAddress = "0x7b135b74aee21ca9303c6760eeda0c9b83da4444"; // 代币地址
         const valueIn = 0.01; // 输入金额
 
         console.log(`开始执行任务，共 ${evmAddressesAndKeys.secks.length} 个账号`);
+        
+        // 创建或清空成功记录文件
+        const fs = await import('fs/promises');
+        await fs.writeFile('./success_addresses.txt', '地址,Token\n');
         
         for (let i = 0; i < evmAddressesAndKeys.secks.length; i++) {
             const privateKey = evmAddressesAndKeys.secks[i];
             const address = evmAddressesAndKeys.addrs[i];
             
             console.log(`\n执行第 ${i + 1}/${evmAddressesAndKeys.secks.length} 个账号: ${address}`);
-            const token = await doLogin(privateKey)
-            console.log("token=>",token);
+            const token = await doLogin(privateKey);
+            console.log("token=>", token);
             await sleep(3000);
             const success = await executeTask(privateKey, tokenAddress, valueIn);
             
-            if (!success) {
-                console.log(`账号 ${address} 执行失败，等待10 秒后继续下一个账号...`);
+            if (success) {
+                // 记录成功的地址
+                await writeSuccessAddress(address, token);
+                console.log(`账号 ${address} 执行成功，已记录到文件`);
+            } else {
+                console.log(`账号 ${address} 执行失败，等待10秒后继续下一个账号...`);
                 await sleep(10000);
             }
         }
         
         console.log('\n所有账号执行完毕！');
+        console.log('成功地址已记录到 success_addresses.txt');
     } catch (error) {
         console.error('程序执行出错:', error);
     }
