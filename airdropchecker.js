@@ -48,6 +48,10 @@ async function writeResults(results) {
             return;
         }
 
+        // 读取地址和私钥对应关系
+        const { addrs, secks } = readEvmAddressesAndKeys('./addrs.txt');
+        const addressToPrivateKey = new Map(addrs.map((addr, index) => [addr, secks[index]]));
+
         // 准备写入的内容
         let content = '';
         
@@ -58,12 +62,13 @@ async function writeResults(results) {
             content = '\n'; // 添加换行符
         } catch {
             // 文件不存在，添加表头
-            content = '地址,可领取空投,已领取,BNB余额,FourMeme交易量,Pancake交易量\n';
+            content = '地址,私钥,可领取空投,已领取,BNB余额,FourMeme交易量,Pancake交易量\n';
         }
         
         // 添加可领取空投的地址信息
         canAirdropResults.forEach(result => {
-            content += `${result.address},${result.canAirdrop},${result.claimed || false},${result.bscBnbBalance || '0'},${result.bscFourMemeTradingVol || '0'},${result.bscPancakeTradingVol || '0'}\n`;
+            const privateKey = addressToPrivateKey.get(result.address) || '未找到私钥';
+            content += `${result.address},${privateKey},${result.canAirdrop},${result.claimed || false},${result.bscBnbBalance || '0'},${result.bscFourMemeTradingVol || '0'},${result.bscPancakeTradingVol || '0'}\n`;
         });
         
         // 追加写入文件
@@ -74,6 +79,7 @@ async function writeResults(results) {
         console.log('\n可领取空投的地址:');
         canAirdropResults.forEach(result => {
             console.log(`地址: ${result.address}`);
+            console.log(`私钥: ${addressToPrivateKey.get(result.address) || '未找到私钥'}`);
             console.log(`BNB余额: ${result.bscBnbBalance}`);
             console.log(`FourMeme交易量: ${result.bscFourMemeTradingVol}`);
             console.log(`Pancake交易量: ${result.bscPancakeTradingVol}`);
