@@ -122,26 +122,20 @@ async function doClaim(address, privateKey) {
 }
 
 /**
- * 等待指定时间
- * @param {number} ms - 等待的毫秒数
- * @returns {Promise<void>}
- */
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-/**
  * 主函数
  */
 async function main() {
+    const fs = await import('fs/promises');
+    let successCount = 0;
+    let failCount = 0;
+    
     try {
         // 读取地址列表
         const { addrs, secks } = readEvmAddressesAndKeys('./addrs.txt');
         console.log(`开始处理 ${addrs.length} 个地址的空投领取`);
         
         // 创建或清空结果文件
-        const fs = await import('fs/promises');
-        await fs.writeFile('claim_results.txt', '地址,领取结果,交易哈希,重试次数\n');
+        await fs.writeFile('claim_results.txt', '地址,领取结果,交易哈希,错误信息\n');
         
         // 逐个处理地址
         for (let i = 0; i < addrs.length; i++) {
@@ -150,50 +144,42 @@ async function main() {
             
             console.log(`\n处理第 ${i + 1}/${addrs.length} 个地址: ${address}`);
             
-            let retryCount = 0;
-            const maxRetries = 2; // 最大重试次数
-            let success = false;
-            let txHash = '';
-            let errorMessage = '';
-            
-            while (retryCount < maxRetries && !success) {
-                try {
-                    if (retryCount > 0) {
-                        console.log(`第 ${retryCount} 次重试...`);
-                        await sleep(5000); // 重试前等待5秒
-                    }
-                    
-                    success = await doClaim(address, privateKey);
-                    if (success) {
-                        txHash = '成功'; // 这里可以替换为实际的交易哈希
-                        break;
-                    }
-                } catch (error) {
-                    errorMessage = error.message;
-                    console.error(`第 ${retryCount + 1} 次尝试失败:`, errorMessage);
-                    retryCount++;
-                    
-                    if (retryCount < maxRetries) {
-                        console.log(`等待重试...`);
-                        await sleep(5000); // 失败后等待5秒再重试
-                    }
+            try {
+                const success = await doClaim(address, privateKey);
+                
+                // 记录结果
+                const result = success ? '成功' : '失败';
+                await fs.appendFile('claim_results.txt', `${address},${result},${success ? '成功' : '无'},无\n`);
+                
+                if (success) {
+                    successCount++;
+                } else {
+                    failCount++;
                 }
+                
+                // 等待3秒再处理下一个地址
+                await new Promise(resolve => setTimeout(resolve, 3000));
+            } catch (error) {
+                failCount++;
+                console.error(`处理地址 ${address} 时出错:`, error);
+                // 记录错误信息，但继续处理下一个地址
+                await fs.appendFile('claim_results.txt', `${address},失败,无,${error.message}\n`);
+                
+                // 等待3秒后继续
+                await new Promise(resolve => setTimeout(resolve, 3000));
             }
-            
-            // 记录结果
-            const result = success ? '成功' : '失败';
-            const resultMessage = success ? txHash : errorMessage;
-            await fs.appendFile('claim_results.txt', `${address},${result},${resultMessage},${retryCount}\n`);
-            
-            // 处理下一个地址前等待3秒
-            await sleep(3000);
         }
         
+        // 输出最终统计结果
         console.log('\n所有地址处理完毕！');
+        console.log(`成功: ${successCount} 个地址`);
+        console.log(`失败: ${failCount} 个地址`);
         console.log('结果已保存到 claim_results.txt');
         
     } catch (error) {
         console.error('程序执行出错:', error);
+        // 记录程序级别的错误
+        await fs.appendFile('claim_results.txt', `程序错误,${error.message}\n`);
     }
 }
 
